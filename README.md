@@ -17,6 +17,8 @@ Woodpecker_POC/
 
 ## 快速开始
 
+🎉 **Woodpecker CI 已成功启动！** 访问: http://johnnyjdev.nvidia.com:8000
+
 ### 1. 启动Woodpecker CI服务
 
 ```bash
