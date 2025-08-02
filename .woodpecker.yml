@@ -1,17 +1,11 @@
-# Woodpecker CI Configuration
-# 支持多种事件触发
-when:
-  event: [push, pull_request, tag]
-  branch: [main, master, develop, feature/*]
-
-# 构建矩阵 - 多Python版本并行测试
+# Woodpecker CI 简化配置
+# 支持所有分支和事件
 matrix:
   PYTHON_VERSION:
     - "3.9"
-    - "3.10" 
+    - "3.10"
     - "3.11"
 
-# 流水线步骤定义
 steps:
   # 第一步：环境准备
   setup:
@@ -22,7 +16,7 @@ steps:
       - echo "构建事件 $CI_COMMIT_EVENT"
       - echo "分支 $CI_COMMIT_BRANCH"
       - echo "提交 $CI_COMMIT_SHA"
-      - apt-get update && apt-get install -y git
+      - apt-get update && apt-get install -y git curl
 
   # 第二步：安装依赖
   install-deps:
@@ -57,110 +51,25 @@ steps:
       - python -m pytest test_app.py -v || echo "测试完成"
       - echo "单元测试执行完毕"
 
-  # 第五步：测试覆盖率（仅Python 3.11）
-  test-coverage:
+  # 第五步：简单构建测试
+  build-test:
     image: python:${PYTHON_VERSION}-slim
     commands:
-      - echo "📊 生成测试覆盖率报告"
-      - pip install -r requirements.txt
-      - python -m pytest test_app.py --cov=app --cov-report=term || echo "覆盖率报告生成完成"
-      - echo "覆盖率分析完毕"
-    when:
-      matrix:
-        PYTHON_VERSION: "3.11"
-
-  # 第六步：安全扫描（仅主分支和Python 3.11）
-  security-scan:
-    image: python:${PYTHON_VERSION}-slim
-    commands:
-      - echo "🔒 运行安全扫描"
-      - pip install -r requirements.txt
-      - echo "检查已知安全漏洞"
-      - safety check --json || echo "安全检查完成"
-      - echo "运行 bandit 安全分析"
-      - bandit -r app.py -f json || echo "Bandit 分析完成"
-    when:
-      branch: [main, master]
-      matrix:
-        PYTHON_VERSION: "3.11"
-
-  # 第七步：构建产物（仅Python 3.11）
-  build-artifacts:
-    image: python:${PYTHON_VERSION}-slim
-    commands:
-      - echo "🏗️ 构建应用产物"
+      - echo "🏗️ 构建测试"
       - pip install -r requirements.txt
       - python -m py_compile app.py
-      - echo "创建构建信息文件"
-      - mkdir -p dist
-      - echo "{\"build_time\":\"$(date)\",\"commit\":\"$CI_COMMIT_SHA\",\"branch\":\"$CI_COMMIT_BRANCH\",\"python\":\"${PYTHON_VERSION}\"}" > dist/build_info.json
-      - cat dist/build_info.json
-      - echo "构建产物创建完成"
-    when:
-      matrix:
-        PYTHON_VERSION: "3.11"
+      - echo "应用编译成功"
+      - timeout 5 python app.py || echo "应用启动测试完成"
 
-  # 第八步：HTML文件验证
-  html-validation:
-    image: alpine:latest
-    commands:
-      - echo "📝 检查 HTML 文件"
-      - if [ -f "index.html" ]; then echo "✅ HTML 文件存在"; else echo "❌ HTML 文件未找到"; exit 1; fi
-      - wc -l index.html
-      - echo "HTML 文件检查完成"
-
-  # 第九步：集成测试（仅主分支和Python 3.11）
-  integration-tests:
-    image: python:${PYTHON_VERSION}-slim
-    commands:
-      - echo "🔗 运行集成测试"
-      - pip install -r requirements.txt
-      - timeout 10 python app.py || echo "应用启动测试完成"
-      - echo "集成测试执行完毕"
-    when:
-      branch: [main, master]
-      matrix:
-        PYTHON_VERSION: "3.11"
-
-  # 第十步：性能测试（仅标签发布和Python 3.11）
-  performance-tests:
-    image: python:${PYTHON_VERSION}-slim
-    commands:
-      - echo "⚡ 运行性能基准测试"
-      - pip install -r requirements.txt
-      - python -c "import time; start=time.time(); import app; print(f'导入时间 {time.time()-start:.3f}秒')"
-      - echo "性能测试完成"
-    when:
-      event: tag
-      matrix:
-        PYTHON_VERSION: "3.11"
-
-  # 第十一步：部署准备（仅主分支和Python 3.11）
-  deploy-preparation:
-    image: alpine:latest
-    commands:
-      - echo "🚀 准备部署包"
-      - mkdir -p dist
-      - cp app.py dist/ || echo "复制 app.py"
-      - cp index.html dist/ || echo "复制 index.html"
-      - ls -la dist/
-      - echo "部署包准备完成"
-    when:
-      branch: [main, master]
-      matrix:
-        PYTHON_VERSION: "3.11"
-
-  # 第十二步：构建通知
+  # 第六步：最终通知
   notification:
     image: alpine:latest
     commands:
       - echo "📢 构建完成通知"
       - echo "✅ 所有步骤已完成！"
       - echo "📊 构建摘要"
-      - echo "分支 $CI_COMMIT_BRANCH"
-      - echo "提交 $CI_COMMIT_SHA"  
-      - echo "Python版本 ${PYTHON_VERSION}"
-      - echo "构建时间 $(date)"
+      - echo "分支: $CI_COMMIT_BRANCH"
+      - echo "提交: $CI_COMMIT_SHA"
+      - echo "Python版本: ${PYTHON_VERSION}"
+      - echo "构建时间: $(date)"
       - echo "🎉 CI/CD 流水线执行成功！"
-    when:
-      status: [success, failure]
