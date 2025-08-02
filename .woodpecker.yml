@@ -1,5 +1,15 @@
 steps:
   hello:
-    image: alpine
+    image: alpine:latest
     commands:
-      - echo hello world
+      - echo "🎉 Hello Woodpecker CI!"
+      - echo "时间: $(date)"
+      - echo "✅ 简单测试成功!"
+      
+  python:
+    image: python:3.11-slim
+    commands:
+      - echo "🐍 Python 测试"
+      - python --version
+      - python -c "print('Hello from Python in Woodpecker!')"
+      - echo "🎯 Python 测试完成"
