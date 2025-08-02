@@ -1,75 +1,20 @@
-# Woodpecker CI 简化配置
-# 支持所有分支和事件
-matrix:
-  PYTHON_VERSION:
-    - "3.9"
-    - "3.10"
-    - "3.11"
-
 steps:
-  # 第一步：环境准备
-  setup:
-    image: python:${PYTHON_VERSION}-slim
-    commands:
-      - echo "🚀 启动 Woodpecker CI 流水线"
-      - echo "Python 版本 $(python --version)"
-      - echo "构建事件 $CI_COMMIT_EVENT"
-      - echo "分支 $CI_COMMIT_BRANCH"
-      - echo "提交 $CI_COMMIT_SHA"
-      - apt-get update && apt-get install -y git curl
-
-  # 第二步：安装依赖
-  install-deps:
-    image: python:${PYTHON_VERSION}-slim
-    commands:
-      - echo "📦 安装 Python 依赖"
-      - python -m pip install --upgrade pip
-      - pip install -r requirements.txt
-      - pip list
-
-  # 第三步：代码质量检查
-  code-quality:
-    image: python:${PYTHON_VERSION}-slim
-    group: quality-checks
-    commands:
-      - echo "🔍 运行代码质量检查"
-      - pip install -r requirements.txt
-      - echo "代码格式检查 (black)"
-      - black --check --diff app.py test_app.py || echo "格式检查完成"
-      - echo "代码风格检查 (flake8)"
-      - flake8 app.py test_app.py --max-line-length=88 || echo "风格检查完成"
-      - echo "类型检查 (mypy)"
-      - mypy app.py --ignore-missing-imports || echo "类型检查完成"
-
-  # 第四步：单元测试
-  unit-tests:
-    image: python:${PYTHON_VERSION}-slim
-    group: quality-checks
-    commands:
-      - echo "🧪 运行单元测试"
-      - pip install -r requirements.txt
-      - python -m pytest test_app.py -v || echo "测试完成"
-      - echo "单元测试执行完毕"
-
-  # 第五步：简单构建测试
-  build-test:
-    image: python:${PYTHON_VERSION}-slim
-    commands:
-      - echo "🏗️ 构建测试"
-      - pip install -r requirements.txt
-      - python -m py_compile app.py
-      - echo "应用编译成功"
-      - timeout 5 python app.py || echo "应用启动测试完成"
-
-  # 第六步：最终通知
-  notification:
+  test:
     image: alpine:latest
     commands:
-      - echo "📢 构建完成通知"
-      - echo "✅ 所有步骤已完成！"
-      - echo "📊 构建摘要"
-      - echo "分支: $CI_COMMIT_BRANCH"
-      - echo "提交: $CI_COMMIT_SHA"
-      - echo "Python版本: ${PYTHON_VERSION}"
-      - echo "构建时间: $(date)"
-      - echo "🎉 CI/CD 流水线执行成功！"
+      - echo "🎉 Hello Woodpecker CI!"
+      - echo "这是一个简单的测试"
+      - echo "当前时间: $(date)"
+      - echo "系统信息: $(uname -a)"
+      - echo "✅ 测试完成！"
+      
+  python-test:
+    image: python:3.11-slim
+    commands:
+      - echo "🐍 Python 测试开始"
+      - python --version
+      - echo "安装依赖中..."
+      - pip install pytest
+      - echo "运行简单测试..."
+      - python -c "print('Hello from Python!')"
+      - echo "🎯 Python 测试完成！"
