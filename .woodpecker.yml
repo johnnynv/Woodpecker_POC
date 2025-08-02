@@ -1,20 +1,5 @@
 steps:
-  test:
-    image: alpine:latest
+  hello:
+    image: alpine
     commands:
-      - echo "🎉 Hello Woodpecker CI!"
-      - echo "这是一个简单的测试"
-      - echo "当前时间: $(date)"
-      - echo "系统信息: $(uname -a)"
-      - echo "✅ 测试完成！"
-      
-  python-test:
-    image: python:3.11-slim
-    commands:
-      - echo "🐍 Python 测试开始"
-      - python --version
-      - echo "安装依赖中..."
-      - pip install pytest
-      - echo "运行简单测试..."
-      - python -c "print('Hello from Python!')"
-      - echo "🎯 Python 测试完成！"
+      - echo hello world
