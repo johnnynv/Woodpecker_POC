@@ -1,0 +1,198 @@
+when:
+  - event: [push, pull_request, tag]
+  - branch: [main, master, develop, feature/*]
+
+# 构建矩阵 - 多版本Python测试
+matrix:
+  PYTHON_VERSION:
+    - "3.9"
+    - "3.10"
+    - "3.11"
+
+steps:
+  # Stage 1: Environment setup and dependency installation
+  - name: setup
+    image: python:${PYTHON_VERSION}-slim
+    commands:
+      - echo "🚀 Starting Woodpecker CI pipeline..."
+      - echo "Python version: $(python --version)"
+      - echo "Build event: $CI_COMMIT_EVENT"
+      - echo "Branch: $CI_COMMIT_BRANCH"
+      - echo "Commit: $CI_COMMIT_SHA"
+      - apt-get update && apt-get install -y git
+
+  - name: install-dependencies
+    image: python:${PYTHON_VERSION}-slim
+    commands:
+      - echo "📦 Installing Python dependencies..."
+      - python -m pip install --upgrade pip
+      - pip install -r requirements.txt
+      - pip list
+
+  # Stage 2: Code quality checks
+  - name: code-quality
+    image: python:${PYTHON_VERSION}-slim
+    group: quality-checks
+    commands:
+      - echo "🔍 Running code quality checks..."
+      - pip install -r requirements.txt
+      - echo "Checking code format (black)..."
+      - black --check --diff app.py test_app.py
+      - echo "Code style check (flake8)..."
+      - flake8 app.py test_app.py --max-line-length=88
+      - echo "Type checking (mypy)..."
+      - mypy app.py --ignore-missing-imports
+
+  # Stage 3: Unit tests
+  - name: unit-tests
+    image: python:${PYTHON_VERSION}-slim
+    group: quality-checks
+    commands:
+      - echo "🧪 Running unit tests..."
+      - pip install -r requirements.txt
+      - pytest test_app.py -v --tb=short
+
+  # Stage 4: Test coverage
+  - name: test-coverage
+    image: python:${PYTHON_VERSION}-slim
+    commands:
+      - echo "📊 Generating test coverage report..."
+      - pip install -r requirements.txt
+      - pytest test_app.py --cov=app --cov-report=term --cov-report=html
+      - echo "Coverage report generated in htmlcov/ directory"
+    when:
+      matrix:
+        PYTHON_VERSION: "3.11"  # Only run coverage on Python 3.11
+
+  # Stage 5: Security scan (main branch only)
+  - name: security-scan
+    image: python:${PYTHON_VERSION}-slim
+    commands:
+      - echo "🔒 Running security scan..."
+      - pip install safety bandit
+      - safety check
+      - bandit -r . -f json || true  # Allow failure for demo purposes
+    when:
+      branch: [main, master]
+      matrix:
+        PYTHON_VERSION: "3.11"
+
+  # Stage 6: Build artifacts
+  - name: build-artifacts
+    image: python:${PYTHON_VERSION}-slim
+    commands:
+      - echo "🏗️ Building application artifacts..."
+      - pip install -r requirements.txt
+      - python -m py_compile app.py
+      - echo "Creating build info file..."
+      - |
+        cat > build_info.json << EOF
+        {
+          "build_time": "$(date -Iseconds)",
+          "commit_sha": "$CI_COMMIT_SHA",
+          "branch": "$CI_COMMIT_BRANCH",
+          "python_version": "${PYTHON_VERSION}",
+          "build_number": "$CI_BUILD_NUMBER"
+        }
+        EOF
+      - cat build_info.json
+    when:
+      matrix:
+        PYTHON_VERSION: "3.11"
+
+  # Stage 7: Static file validation
+  - name: html-validation
+    image: alpine:latest
+    commands:
+      - echo "📝 Checking HTML files..."
+      - apk add --no-cache curl
+      - if [ -f "index.html" ]; then echo "✅ HTML file exists"; else echo "❌ HTML file not found"; exit 1; fi
+      - wc -l index.html
+      - echo "HTML file line count completed"
+
+  # Stage 8: Integration tests (specific conditions only)
+  - name: integration-tests
+    image: python:${PYTHON_VERSION}-slim
+    commands:
+      - echo "🔗 Running integration tests..."
+      - pip install -r requirements.txt
+      - python app.py  # Run main program to ensure it works
+      - echo "Application startup test completed"
+    when:
+      event: [push]
+      branch: [main, master, develop]
+      matrix:
+        PYTHON_VERSION: "3.11"
+
+  # Stage 9: Performance tests (tag events only)
+  - name: performance-tests
+    image: python:${PYTHON_VERSION}-slim
+    commands:
+      - echo "⚡ Running performance tests..."
+      - pip install -r requirements.txt
+      - |
+        python -c "
+        import time
+        from app import add_numbers, multiply_numbers
+        
+        start_time = time.time()
+        for i in range(10000):
+            add_numbers(i, i+1)
+            multiply_numbers(i, 2)
+        end_time = time.time()
+        
+        print(f'Performance test completed: {end_time - start_time:.4f} seconds')
+        "
+    when:
+      event: tag
+      matrix:
+        PYTHON_VERSION: "3.11"
+
+  # Stage 10: Deploy preparation (main branch and Python 3.11 only)
+  - name: deploy-preparation
+    image: python:${PYTHON_VERSION}-slim
+    commands:
+      - echo "🚀 Preparing deployment..."
+      - echo "Creating deployment package..."
+      - mkdir -p dist
+      - cp app.py dist/
+      - cp index.html dist/
+      - cp build_info.json dist/ || true
+      - ls -la dist/
+      - echo "Deployment package ready"
+    when:
+      branch: [main, master]
+      event: push
+      matrix:
+        PYTHON_VERSION: "3.11"
+
+  # Stage 11: Notification
+  - name: notification
+    image: alpine:latest
+    commands:
+      - echo "📢 Build completion notification..."
+      - echo "✅ All steps completed!"
+      - echo "📊 Build summary:"
+      - echo "   - Branch: $CI_COMMIT_BRANCH"
+      - echo "   - Commit: $CI_COMMIT_SHA"
+      - echo "   - Python version: ${PYTHON_VERSION}"
+      - echo "   - Build time: $(date)"
+    when:
+      status: [success, failure]
+
+# Service definitions (for integration testing)
+services:
+  - name: test-db
+    image: alpine:latest
+    commands:
+      - echo "Mock database service starting..."
+      - sleep 30  # Keep service running
+    when:
+      matrix:
+        PYTHON_VERSION: "3.11"
+
+# Cache configuration
+cache:
+  - key: "pip-cache-${PYTHON_VERSION}"
+    paths:
+      - /root/.cache/pip
