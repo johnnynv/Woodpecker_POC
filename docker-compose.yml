@@ -7,16 +7,20 @@ services:
       - 8000:8000
     volumes:
       - woodpecker-server-data:/var/lib/woodpecker/
+
     environment:
       - WOODPECKER_OPEN=true
-      - WOODPECKER_HOST=http://johnnyjdev.nvidia.com:8000
+      - WOODPECKER_HOST=http://10.117.6.131:8000
       - WOODPECKER_ADMIN=admin
       - WOODPECKER_AGENT_SECRET=super-secret
       - WOODPECKER_LOG_LEVEL=debug
-      - WOODPECKER_GITEA=true
-      - WOODPECKER_GITEA_URL=http://localhost:3000
-      - WOODPECKER_GITEA_CLIENT=dummy
-      - WOODPECKER_GITEA_SECRET=dummy
+      - WOODPECKER_GITHUB=true
+      - WOODPECKER_GITHUB_APP_ID=1715230
+      - WOODPECKER_GITHUB_CLIENT=Iv23liqypdKjIs2ib4nP
+      - WOODPECKER_GITHUB_SECRET=985d7fdccceb0e3d8f209c6ef5825101f548ee89
+      - WOODPECKER_GITHUB_WEBHOOK_SECRET=admin123
+      - WOODPECKER_GITHUB_SKIP_VERIFY=true
+
 
   woodpecker-agent:
     image: woodpeckerci/woodpecker-agent:latest
@@ -25,7 +29,7 @@ services:
     depends_on:
       - woodpecker-server
     volumes:
-      - /run/user/2524/podman/podman.sock:/var/run/docker.sock
+      - /run/user/2554/podman/podman.sock:/var/run/docker.sock
       - /tmp:/tmp
     environment:
       - WOODPECKER_SERVER=woodpecker-server:9000

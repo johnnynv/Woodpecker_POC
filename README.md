@@ -195,3 +195,6 @@ podman-compose down -v
 ---
 
 🎉 享受使用Woodpecker CI进行现代化的CI/CD体验！
+
+---
+✅ **状态更新**: Woodpecker CI 已成功集成并准备运行流水线！
